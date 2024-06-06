@@ -1,0 +1,24 @@
+[package]
+name = "canister_sig_util"
+description = "Utils for handling canister signatures"
+version = "1.0.0"
+edition = "2021"
+
+[dependencies]
+# ic dependencies
+candid = "0.10"
+ic-cdk = "0.14"
+ic-certification = "2.5"
+ic-representation-independent-hash = "2.5"
+
+# other dependencies
+hex = "0.4"
+lazy_static = "1.4"
+serde = { version = "1", features = ["derive"] }
+serde_bytes = "0.11"
+serde_cbor = "0.11"
+sha2 = "0.10"
+
+[dev-dependencies]
+assert_matches = "1.5"
+rand = { version ="0.8" }
