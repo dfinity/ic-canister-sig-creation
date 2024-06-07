@@ -117,8 +117,9 @@ impl SignatureMap {
     /// Retrieves from this map and returns canister signature for the specified `seed` and `message_hash`.
     /// If the canister uses
     /// [certified_data](https://internetcomputer.org/docs/current/references/ic-interface-spec/#system-api-certified-data)
-    /// to manage certified assets, the caller should provide also the root hash of the assets subtree
-    /// (cf. `asset_util`-crate).
+    /// for [response verification](https://internetcomputer.org/docs/current/references/http-gateway-protocol-spec#response-verification),
+    /// the caller should provide also the root hash of the assets subtree containing the
+    /// paths `/http_assets` and / or `/http_expr`.
     /// The returned value (if found) is a CBOR-serialised `CanisterSig`.
     pub fn get_signature_as_cbor(
         &self,
