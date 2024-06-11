@@ -1,6 +1,9 @@
 [package]
-name = "canister_sig_util"
-description = "Utils for handling canister signatures"
+name = "ic-canister-sig-creation"
+description = "Library for creating canister signatures on the Internet Computer."
+documentation = "https://docs.rs/ic-canister-sig-creation"
+keywords = ["internet-computer", "canister", "utility", "icp", "dfinity"]
+categories = ["cryptography", "data-structures", "no-std", "wasm"]
 version = "1.0.0"
 edition = "2021"
 
