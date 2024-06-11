@@ -136,6 +136,15 @@ pub fn hash_bytes(value: impl AsRef<[u8]>) -> Hash {
     hasher.finalize().into()
 }
 
+pub fn hash_with_domain(sep: &[u8], bytes: &[u8]) -> Hash {
+    let mut hasher = Sha256::new();
+    let buf = [sep.len() as u8];
+    hasher.update(buf);
+    hasher.update(sep);
+    hasher.update(bytes);
+    hasher.finalize().into()
+}
+
 pub fn delegation_signature_msg(
     pubkey: &[u8],
     expiration: u64,
