@@ -1,4 +1,4 @@
-# canister-sig-util
+# ic-canister-sig-creation
 
 Utils crate for handling canister signatures public keys and _creating_ canister signatures.
 Please refer to the [ic-standalone-sig-verifier](https://github.com/dfinity/ic/tree/master/rs/crypto/standalone-sig-verifier) crate for canister signature _verification_.
