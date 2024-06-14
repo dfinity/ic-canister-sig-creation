@@ -34,13 +34,13 @@ To prepare a signature on a message, add it's `hash` to the signature map togeth
 ```rust
 use canister_sig_util::hash_bytes;
 
+/// The signature domain should be unique for the context in which the signature is used.
+const SIG_DOMAIN: &[u8] = b"ic-example-canister-sig";
+
 fn add_signature(seed: &[u8], message: &[u8]) {
     SIGNATURES.with(|sigs| {
         let mut sigs = sigs.borrow_mut();
-        // The hash should always use a domain separator in order to make sure that the signature cannot be
-        // used outside the intended context.
-        let msg_hash = hash_with_domain(b"ic-example-canister-sig", message);
-        sigs.add_signature(seed, msg_hash);
+        sigs.add_signature(seed, &SIG_DOMAIN, message);
     });
 }
 ```

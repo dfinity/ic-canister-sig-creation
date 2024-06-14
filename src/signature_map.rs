@@ -1,5 +1,5 @@
-//! Maintains anchor signatures and expirations.
-use crate::{hash_bytes, CanisterSig};
+//! Maintains signatures with associated expirations.
+use crate::{hash_bytes, hash_with_domain, CanisterSig};
 use ic_cdk::api::{data_certificate, time};
 use ic_certification::{
     fork, labeled, leaf, leaf_hash, pruned, AsHashTree, Hash, HashTree, RbTree,
@@ -10,7 +10,6 @@ use std::borrow::Cow;
 use std::collections::BinaryHeap;
 
 const MINUTE_NS: u64 = 60 * 1_000_000_000;
-
 // The expiration used for signatures.
 #[allow(clippy::identity_op)]
 const SIGNATURE_EXPIRATION_PERIOD_NS: u64 = 1 * MINUTE_NS;
@@ -87,12 +86,12 @@ impl SignatureMap {
 
     /// Removes a batch of expired signatures from the signature map.
     ///
-    /// This function piggy-backs on update calls that create new signatures to
+    /// This function piggybacks on update calls that create new signatures to
     /// amortize the cost of tree pruning. Each operation on the signature map
     /// will prune at most [MAX_SIGS_TO_PRUNE] other signatures.
     ///
     /// Pruning the signature map also requires updating the `certified_data`
-    /// with the new root hash. Therefore this function is only called by [add_signature]
+    /// with the new root hash. Therefore, this function is only called by [add_signature]
     /// which requires updating the `certified_data` as well. This avoids the risk
     /// of clients forgetting to update `certified_data` as it would be a bug even
     /// without pruning.
@@ -160,13 +159,15 @@ impl SignatureMap {
         Ok(cbor.into_inner())
     }
 
-    /// Adds to this map a canister signature for the specified `seed` and `message_hash`
-    pub fn add_signature(&mut self, seed: &[u8], message_hash: Hash) {
+    /// Adds a canister signature with signature domain `domain` to this map for the specified `seed` and `message`.
+    ///
+    /// The signature domain used to ensure that the same signature cannot be misused in a different context.
+    pub fn add_signature(&mut self, seed: &[u8], domain: &[u8], message: &[u8]) {
         let now = time();
 
         self.prune_expired(now);
         let expires_at = now.saturating_add(SIGNATURE_EXPIRATION_PERIOD_NS);
-        self.put(seed, message_hash, expires_at);
+        self.put(seed, hash_with_domain(domain, message), expires_at);
     }
 
     pub fn len(&self) -> usize {
