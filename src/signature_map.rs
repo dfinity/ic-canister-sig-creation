@@ -40,9 +40,9 @@ struct SigExpiration {
 /// - message: The message to sign.
 #[derive(PartialEq, Eq)]
 pub struct CanisterSigInputs<'a> {
-    pub domain: &'a[u8],
-    pub seed: &'a[u8],
-    pub message: &'a[u8],
+    pub domain: &'a [u8],
+    pub seed: &'a [u8],
+    pub message: &'a [u8],
 }
 
 impl CanisterSigInputs<'_> {
