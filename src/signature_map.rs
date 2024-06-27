@@ -8,6 +8,7 @@ use serde::Serialize;
 use serde_bytes::ByteBuf;
 use std::borrow::Cow;
 use std::collections::BinaryHeap;
+use thiserror::Error;
 
 const MINUTE_NS: u64 = 60 * 1_000_000_000;
 // The expiration used for signatures.
@@ -69,6 +70,14 @@ impl PartialOrd for SigExpiration {
 pub struct SignatureMap {
     certified_map: RbTree<Hash, RbTree<Hash, Unit>>,
     expiration_queue: BinaryHeap<SigExpiration>,
+}
+
+#[derive(Error, Debug)]
+pub enum CanisterSigError {
+    #[error("Data certificates (which are required to create canister signatures) are only available in query calls.")]
+    NoCertificate,
+    #[error("No signature found for the given inputs.")]
+    NoSignature,
 }
 
 impl SignatureMap {
@@ -141,12 +150,11 @@ impl SignatureMap {
         &self,
         sig_inputs: &CanisterSigInputs,
         maybe_certified_assets_root_hash: Option<Hash>,
-    ) -> Result<Vec<u8>, String> {
-        let certificate = data_certificate()
-            .ok_or("data certificate is only available in query calls".to_string())?;
+    ) -> Result<Vec<u8>, CanisterSigError> {
+        let certificate = data_certificate().ok_or(CanisterSigError::NoCertificate)?;
         let witness = self
             .witness(sig_inputs.seed, sig_inputs.message_hash())
-            .ok_or("missing witness".to_string())?;
+            .ok_or(CanisterSigError::NoSignature)?;
 
         debug_assert_eq!(
             witness.digest(),
