@@ -172,13 +172,6 @@ pub fn delegation_signature_msg(
     representation_independent_hash(m.as_slice()).to_vec()
 }
 
-fn msg_with_domain(sep: &[u8], bytes: &[u8]) -> Vec<u8> {
-    let mut msg = vec![sep.len() as u8];
-    msg.append(&mut sep.to_vec());
-    msg.append(&mut bytes.to_vec());
-    msg
-}
-
 #[derive(Serialize)]
 struct CanisterSig {
     certificate: ByteBuf,

@@ -34,6 +34,23 @@ struct SigExpiration {
     msg_hash: Hash,
 }
 
+/// Inputs to create and retrieve a canister signature.
+/// - domain: The domain is used to ensure that the same signature cannot be misused in a different context.
+/// - seed: The seed is used to derive the canister signature public key to use for this particular signature.
+/// - message: The message to sign.
+#[derive(PartialEq, Eq)]
+pub struct CanisterSigInputs<'a> {
+    pub domain: &'a[u8],
+    pub seed: &'a[u8],
+    pub message: &'a[u8],
+}
+
+impl CanisterSigInputs<'_> {
+    pub fn message_hash(&self) -> Hash {
+        hash_with_domain(self.domain, self.message)
+    }
+}
+
 impl Ord for SigExpiration {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         // BinaryHeap is a max heap, but we want expired entries
@@ -113,23 +130,22 @@ impl SignatureMap {
         num_pruned
     }
 
-    /// Retrieves from this map and returns canister signature for the specified `seed` and `message_hash`.
-    /// If the canister uses
+    /// Retrieves the signature for the given inputs from this map.
+    /// The returned value (if found) is a CBOR-serialised [CanisterSig].
+    ///
     /// [certified_data](https://internetcomputer.org/docs/current/references/ic-interface-spec/#system-api-certified-data)
     /// for [response verification](https://internetcomputer.org/docs/current/references/http-gateway-protocol-spec#response-verification),
     /// the caller should provide also the root hash of the assets subtree containing the
     /// paths `/http_assets` and / or `/http_expr`.
-    /// The returned value (if found) is a CBOR-serialised `CanisterSig`.
     pub fn get_signature_as_cbor(
         &self,
-        seed: &[u8],
-        message_hash: Hash,
+        sig_inputs: &CanisterSigInputs,
         maybe_certified_assets_root_hash: Option<Hash>,
     ) -> Result<Vec<u8>, String> {
         let certificate = data_certificate()
             .ok_or("data certificate is only available in query calls".to_string())?;
         let witness = self
-            .witness(seed, message_hash)
+            .witness(sig_inputs.seed, sig_inputs.message_hash())
             .ok_or("missing witness".to_string())?;
 
         let witness_hash = witness.digest();
@@ -159,15 +175,13 @@ impl SignatureMap {
         Ok(cbor.into_inner())
     }
 
-    /// Adds a canister signature with signature domain `domain` to this map for the specified `seed` and `message`.
-    ///
-    /// The signature domain used to ensure that the same signature cannot be misused in a different context.
-    pub fn add_signature(&mut self, seed: &[u8], domain: &[u8], message: &[u8]) {
+    /// Adds a signature to the map, given the signature inputs.
+    pub fn add_signature(&mut self, sig_inputs: &CanisterSigInputs) {
         let now = time();
 
         self.prune_expired(now);
         let expires_at = now.saturating_add(SIGNATURE_EXPIRATION_PERIOD_NS);
-        self.put(seed, hash_with_domain(domain, message), expires_at);
+        self.put(sig_inputs.seed, sig_inputs.message_hash(), expires_at);
     }
 
     pub fn len(&self) -> usize {
