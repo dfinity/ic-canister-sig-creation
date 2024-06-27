@@ -1,5 +1,5 @@
-//! Maintains anchor signatures and expirations.
-use crate::{hash_bytes, CanisterSig};
+//! Maintains signatures with associated expirations.
+use crate::{hash_bytes, hash_with_domain, CanisterSig};
 use ic_cdk::api::{data_certificate, time};
 use ic_certification::{
     fork, labeled, leaf, leaf_hash, pruned, AsHashTree, Hash, HashTree, RbTree,
@@ -10,7 +10,6 @@ use std::borrow::Cow;
 use std::collections::BinaryHeap;
 
 const MINUTE_NS: u64 = 60 * 1_000_000_000;
-
 // The expiration used for signatures.
 #[allow(clippy::identity_op)]
 const SIGNATURE_EXPIRATION_PERIOD_NS: u64 = 1 * MINUTE_NS;
@@ -33,6 +32,23 @@ struct SigExpiration {
     expires_at: u64,
     seed_hash: Hash,
     msg_hash: Hash,
+}
+
+/// Inputs to create and retrieve a canister signature.
+/// - domain: The domain is used to ensure that the same signature cannot be misused in a different context.
+/// - seed: The seed is used to derive the canister signature public key to use for this particular signature.
+/// - message: The message to sign.
+#[derive(PartialEq, Eq)]
+pub struct CanisterSigInputs<'a> {
+    pub domain: &'a [u8],
+    pub seed: &'a [u8],
+    pub message: &'a [u8],
+}
+
+impl CanisterSigInputs<'_> {
+    pub fn message_hash(&self) -> Hash {
+        hash_with_domain(self.domain, self.message)
+    }
 }
 
 impl Ord for SigExpiration {
@@ -87,12 +103,12 @@ impl SignatureMap {
 
     /// Removes a batch of expired signatures from the signature map.
     ///
-    /// This function piggy-backs on update calls that create new signatures to
+    /// This function piggybacks on update calls that create new signatures to
     /// amortize the cost of tree pruning. Each operation on the signature map
     /// will prune at most [MAX_SIGS_TO_PRUNE] other signatures.
     ///
     /// Pruning the signature map also requires updating the `certified_data`
-    /// with the new root hash. Therefore this function is only called by [add_signature]
+    /// with the new root hash. Therefore, this function is only called by [add_signature]
     /// which requires updating the `certified_data` as well. This avoids the risk
     /// of clients forgetting to update `certified_data` as it would be a bug even
     /// without pruning.
@@ -114,23 +130,22 @@ impl SignatureMap {
         num_pruned
     }
 
-    /// Retrieves from this map and returns canister signature for the specified `seed` and `message_hash`.
-    /// If the canister uses
+    /// Retrieves the signature for the given inputs from this map.
+    /// The returned value (if found) is a CBOR-serialised [CanisterSig].
+    ///
     /// [certified_data](https://internetcomputer.org/docs/current/references/ic-interface-spec/#system-api-certified-data)
     /// for [response verification](https://internetcomputer.org/docs/current/references/http-gateway-protocol-spec#response-verification),
     /// the caller should provide also the root hash of the assets subtree containing the
     /// paths `/http_assets` and / or `/http_expr`.
-    /// The returned value (if found) is a CBOR-serialised `CanisterSig`.
     pub fn get_signature_as_cbor(
         &self,
-        seed: &[u8],
-        message_hash: Hash,
+        sig_inputs: &CanisterSigInputs,
         maybe_certified_assets_root_hash: Option<Hash>,
     ) -> Result<Vec<u8>, String> {
         let certificate = data_certificate()
             .ok_or("data certificate is only available in query calls".to_string())?;
         let witness = self
-            .witness(seed, message_hash)
+            .witness(sig_inputs.seed, sig_inputs.message_hash())
             .ok_or("missing witness".to_string())?;
 
         debug_assert_eq!(
@@ -158,13 +173,13 @@ impl SignatureMap {
         Ok(cbor.into_inner())
     }
 
-    /// Adds to this map a canister signature for the specified `seed` and `message_hash`
-    pub fn add_signature(&mut self, seed: &[u8], message_hash: Hash) {
+    /// Adds a signature to the map, given the signature inputs.
+    pub fn add_signature(&mut self, sig_inputs: &CanisterSigInputs) {
         let now = time();
 
         self.prune_expired(now);
         let expires_at = now.saturating_add(SIGNATURE_EXPIRATION_PERIOD_NS);
-        self.put(seed, message_hash, expires_at);
+        self.put(sig_inputs.seed, sig_inputs.message_hash(), expires_at);
     }
 
     pub fn len(&self) -> usize {

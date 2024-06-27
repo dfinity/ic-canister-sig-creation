@@ -18,6 +18,10 @@ pub const CANISTER_SIG_PK_DER_PREFIX_LENGTH: usize = 19;
 pub const CANISTER_SIG_PK_DER_OID: &[u8; 14] =
     b"\x30\x0C\x06\x0A\x2B\x06\x01\x04\x01\x83\xB8\x43\x01\x02";
 
+/// Signature domain for IC request auth delegations as specified in the IC interface specification:
+/// https://internetcomputer.org/docs/current/references/ic-interface-spec/#authentication
+pub const DELEGATION_SIG_DOMAIN: &[u8] = b"ic-request-auth-delegation";
+
 lazy_static! {
     /// The IC root public key used when verifying canister signatures.
     pub static ref IC_ROOT_PUBLIC_KEY: Vec<u8> =
@@ -145,6 +149,11 @@ pub fn hash_with_domain(sep: &[u8], bytes: &[u8]) -> Hash {
     hasher.finalize().into()
 }
 
+/// Computes the signing input for a signature on an IC request authentication delegation.
+/// It can be used in conjunction with the [DELEGATION_SIG_DOMAIN] to create
+/// a signed `sender_delegation`.
+/// Relevant part of the IC interface specification:
+/// https://internetcomputer.org/docs/current/references/ic-interface-spec#authentication
 pub fn delegation_signature_msg(
     pubkey: &[u8],
     expiration: u64,
@@ -160,15 +169,7 @@ pub fn delegation_signature_msg(
         }
         m.push(("targets".into(), Value::Array(arr)));
     }
-    let map_hash = representation_independent_hash(m.as_slice());
-    msg_with_domain(b"ic-request-auth-delegation", &map_hash)
-}
-
-fn msg_with_domain(sep: &[u8], bytes: &[u8]) -> Vec<u8> {
-    let mut msg = vec![sep.len() as u8];
-    msg.append(&mut sep.to_vec());
-    msg.append(&mut bytes.to_vec());
-    msg
+    representation_independent_hash(m.as_slice()).to_vec()
 }
 
 #[derive(Serialize)]

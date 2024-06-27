@@ -34,13 +34,17 @@ To prepare a signature on a message, add it's `hash` to the signature map togeth
 ```rust
 use canister_sig_util::hash_bytes;
 
+/// The signature domain should be unique for the context in which the signature is used.
+const SIG_DOMAIN: &[u8] = b"ic-example-canister-sig";
+
 fn add_signature(seed: &[u8], message: &[u8]) {
-    SIGNATURES.with(|sigs| {
-        let mut sigs = sigs.borrow_mut();
-        // The hash should always use a domain separator in order to make sure that the signature cannot be
-        // used outside the intended context.
-        let msg_hash = hash_with_domain(b"ic-example-canister-sig", message);
-        sigs.add_signature(seed, msg_hash);
+    let sig_inputs = CanisterSigInputs {
+        domain: SIG_DOMAIN,
+        seed,
+        message,
+    };
+    SIGNATURES.with_borrow_mut(|sigs| {
+        sigs.add_signature(&sig_inputs);
     });
 }
 ```
@@ -62,10 +66,18 @@ fn update_root_hash() {
 To retrieve a prepared signature, use the `get_signature_as_cbor` on the `SignatureMap` instance:
 
 ```rust
-fn get_signature(seed: &[u8], message_hash: Hash) -> Result<Vec<u8>, String> {
-    SIGNATURES.with(|sigs| {
-        let sig_map = sigs.borrow();
-        sig_map.get_signature_as_cbor(seed, message_hash, None)
+
+/// The signature domain should be unique for the context in which the signature is used.
+const SIG_DOMAIN: &[u8] = b"ic-example-canister-sig";
+
+fn get_signature(seed: &[u8], message: &[u8]) -> Result<Vec<u8>, String> {
+    let sig_inputs = CanisterSigInputs {
+        domain: SIG_DOMAIN,
+        seed,
+        message,
+    };
+    SIGNATURES.with_borrow(|sigs| {
+        sigs.get_signature_as_cbor(&sig_inputs, None)
     });
 }
 ```
