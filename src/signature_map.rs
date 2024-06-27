@@ -148,15 +148,13 @@ impl SignatureMap {
             .witness(sig_inputs.seed, sig_inputs.message_hash())
             .ok_or("missing witness".to_string())?;
 
-        let witness_hash = witness.digest();
-        let root_hash = self.root_hash();
-        if witness_hash != root_hash {
-            return Err(format!(
-                "internal error: signature map computed an invalid hash tree, witness hash is {}, root hash is {}",
-                hex::encode(witness_hash),
-                hex::encode(root_hash)
-            ));
-        }
+        debug_assert_eq!(
+            witness.digest(),
+            self.root_hash(),
+            "signature map computed an invalid hash tree, witness hash is {}, root hash is {}",
+            hex::encode(witness.digest()),
+            hex::encode(self.root_hash())
+        );
 
         let sigs_tree = labeled(LABEL_SIG, witness);
         let tree = match maybe_certified_assets_root_hash {
