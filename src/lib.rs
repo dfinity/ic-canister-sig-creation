@@ -2,7 +2,7 @@ use candid::Principal;
 use ic_certification::{Hash, HashTree};
 use ic_representation_independent_hash::{representation_independent_hash, Value};
 use lazy_static::lazy_static;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_bytes::ByteBuf;
 use sha2::{Digest, Sha256};
 
@@ -172,7 +172,7 @@ pub fn delegation_signature_msg(
     representation_independent_hash(m.as_slice()).to_vec()
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 struct CanisterSig {
     certificate: ByteBuf,
     tree: HashTree,
