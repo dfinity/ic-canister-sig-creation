@@ -1,5 +1,7 @@
 use super::*;
-use ic_certification::Hash;
+use assert_matches::assert_matches;
+use ic_certification::hash_tree::SubtreeLookupResult::Found;
+use ic_certification::{Hash, LookupResult};
 use sha2::{Digest, Sha256};
 
 fn hash_bytes(value: impl AsRef<[u8]>) -> Hash {
@@ -106,4 +108,73 @@ fn test_random_modifications() {
             }
         }
     }
+}
+
+#[test]
+fn test_signatures_pruned_on_add() {
+    const TIME_NOW: u64 = 100;
+    let mut map = SignatureMap::default();
+
+    let sig_inputs = CanisterSigInputs {
+        domain: b"ic-request-auth-delegation",
+        seed: &[1, 2, 3],
+        message: &[4, 5, 6],
+    };
+
+    for i in 0..50 {
+        map.add_signature_internal(&sig_inputs, TIME_NOW + i);
+    }
+
+    assert_eq!(map.len(), 50);
+
+    // Pruning timeout is one minute
+    map.add_signature_internal(&sig_inputs, TIME_NOW + 2 * MINUTE_NS);
+    assert_eq!(map.len(), 1);
+}
+
+#[test]
+fn test_signature_round_trip() {
+    const TIME_NOW: u64 = 100;
+    let certificate = vec![1u8, 2, 3];
+    let sig_inputs = CanisterSigInputs {
+        domain: b"ic-request-auth-delegation",
+        seed: &[1, 2, 3],
+        message: &[4, 5, 6],
+    };
+
+    let mut map = SignatureMap::default();
+    map.add_signature_internal(&sig_inputs, TIME_NOW);
+    let result = map
+        .get_signature_as_cbor_internal(&sig_inputs, certificate.clone(), None)
+        .expect("failed to get signature");
+
+    let sig: CanisterSig =
+        serde_cbor::from_slice(&result).expect("failed to deserialize signature");
+    assert_eq!(sig.certificate.as_slice(), certificate.as_slice());
+    let Found(subtree) = sig.tree.lookup_subtree([b"sig"]) else {
+        panic!("expected to find a subtree");
+    };
+    assert_eq!(subtree.digest(), map.root_hash());
+    // canister sig path as per spec: /sig/<seed_hash>/<message_hash>
+    let path: &[&[u8]] = &[
+        b"sig",
+        &hash_bytes(sig_inputs.seed),
+        &sig_inputs.message_hash(),
+    ];
+    assert_matches!(sig.tree.lookup_path(path), LookupResult::Found(_));
+}
+
+#[test]
+fn test_signature_error_non_existing() {
+    let map = SignatureMap::default();
+
+    let sig_inputs = CanisterSigInputs {
+        domain: b"ic-request-auth-delegation",
+        seed: &[1, 2, 3],
+        message: &[4, 5, 6],
+    };
+
+    let certificate = vec![1u8, 2, 3];
+    let result = map.get_signature_as_cbor_internal(&sig_inputs, certificate, None);
+    assert_matches!(result, Err(CanisterSigError::NoSignature));
 }

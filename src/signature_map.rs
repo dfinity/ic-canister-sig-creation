@@ -152,6 +152,19 @@ impl SignatureMap {
         maybe_certified_assets_root_hash: Option<Hash>,
     ) -> Result<Vec<u8>, CanisterSigError> {
         let certificate = data_certificate().ok_or(CanisterSigError::NoCertificate)?;
+        self.get_signature_as_cbor_internal(
+            sig_inputs,
+            certificate,
+            maybe_certified_assets_root_hash,
+        )
+    }
+
+    fn get_signature_as_cbor_internal(
+        &self,
+        sig_inputs: &CanisterSigInputs,
+        certificate: Vec<u8>,
+        maybe_certified_assets_root_hash: Option<Hash>,
+    ) -> Result<Vec<u8>, CanisterSigError> {
         let witness = self
             .witness(sig_inputs.seed, sig_inputs.message_hash())
             .ok_or(CanisterSigError::NoSignature)?;
@@ -184,7 +197,10 @@ impl SignatureMap {
     /// Adds a signature to the map, given the signature inputs.
     pub fn add_signature(&mut self, sig_inputs: &CanisterSigInputs) {
         let now = time();
+        self.add_signature_internal(sig_inputs, now);
+    }
 
+    fn add_signature_internal(&mut self, sig_inputs: &CanisterSigInputs, now: u64) {
         self.prune_expired(now);
         let expires_at = now.saturating_add(SIGNATURE_EXPIRATION_PERIOD_NS);
         self.put(sig_inputs.seed, sig_inputs.message_hash(), expires_at);
