@@ -4,8 +4,14 @@ description = "Library for creating canister signatures on the Internet Computer
 documentation = "https://docs.rs/ic-canister-sig-creation"
 keywords = ["internet-computer", "canister", "utility", "icp", "dfinity"]
 categories = ["cryptography", "data-structures", "no-std", "wasm"]
-version = "1.0.0"
+version = "1.0.1"
 edition = "2021"
+license = "Apache-2.0"
+include = ["src", "Cargo.toml", "LICENSE", "README.md"]
+repository = "https://github.com/dfinity/ic-canister-sig-creation"
+authors = ["DFINITY Stiftung"]
+homepage = "https://github.com/dfinity/ic-canister-sig-creation"
+readme = "README.md"
 
 [dependencies]
 # ic dependencies
