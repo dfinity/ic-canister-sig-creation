@@ -1,7 +1,7 @@
 use super::*;
 use assert_matches::assert_matches;
 use ic_certification::hash_tree::SubtreeLookupResult::Found;
-use ic_certification::Hash;
+use ic_certification::{Hash, LookupResult};
 use sha2::{Digest, Sha256};
 
 fn hash_bytes(value: impl AsRef<[u8]>) -> Hash {
@@ -155,6 +155,9 @@ fn test_signature_round_trip() {
         panic!("expected to find a subtree");
     };
     assert_eq!(subtree.digest(), map.root_hash());
+    // canister sig path as per spec: /sig/<seed_hash>/<message_hash>
+    let path: &[&[u8]] = &[b"sig", &hash_bytes(sig_inputs.seed), &sig_inputs.message_hash()];
+    assert_matches!(sig.tree.lookup_path(path), LookupResult::Found(_));
 }
 
 #[test]
