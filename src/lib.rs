@@ -325,7 +325,7 @@ mod tests {
 
     #[test]
     fn should_fail_parse_canister_sig_cbor_if_bad_prefix() {
-        let mut bad_prefix_cbor = CANISTER_SIG_CBOR.clone();
+        let mut bad_prefix_cbor = *CANISTER_SIG_CBOR;
         bad_prefix_cbor[0] = 42;
         let result = parse_canister_sig_cbor(&bad_prefix_cbor);
         assert_matches!(result, Err(e) if e.contains("doesn't have a self-describing tag"));
@@ -339,11 +339,9 @@ mod tests {
 
     #[test]
     fn should_fail_parse_canister_sig_cbor_if_corrupted_cbor() {
-        let mut corrupted_cbor = CANISTER_SIG_CBOR.clone();
-        for i in 180..190 {
-            // HashTree starts in this range
-            corrupted_cbor[i] = 42;
-        }
+        let mut corrupted_cbor = *CANISTER_SIG_CBOR;
+        // `HashTree` starts around this byte.
+        corrupted_cbor[180] = 42;
         let result = parse_canister_sig_cbor(&corrupted_cbor);
         assert_matches!(result, Err(e) if e.contains("failed to parse canister signature"));
     }
