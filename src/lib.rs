@@ -172,10 +172,23 @@ pub fn delegation_signature_msg(
     representation_independent_hash(m.as_slice()).to_vec()
 }
 
-#[derive(Serialize, Deserialize)]
-struct CanisterSig {
+/// A canister signature,
+/// see https://internetcomputer.org/docs/current/references/ic-interface-spec#canister-signatures
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub struct CanisterSig {
     certificate: ByteBuf,
     tree: HashTree,
+}
+
+/// Parses the given bytes as a CBOR-encoded `CanisterSig`-struct.
+pub fn parse_canister_sig_cbor(signature_cbor: &[u8]) -> Result<CanisterSig, String> {
+    // 0xd9d9f7 (cf. https://tools.ietf.org/html/rfc7049#section-2.4.5) is the
+    // self-describing CBOR tag required to be present by the interface spec.
+    if signature_cbor.len() < 3 || signature_cbor[0..3] != [0xd9, 0xd9, 0xf7] {
+        return Err("signature CBOR doesn't have a self-describing tag".to_string());
+    }
+    serde_cbor::from_slice::<CanisterSig>(signature_cbor)
+        .map_err(|e| format!("failed to parse canister signature CBOR: {}", e))
 }
 
 #[cfg(test)]
@@ -187,6 +200,7 @@ mod tests {
     const TEST_SEED: [u8; 3] = [42, 72, 44];
 
     const CANISTER_SIG_PK_DER: &[u8; 33] = b"\x30\x1f\x30\x0c\x06\x0a\x2b\x06\x01\x04\x01\x83\xb8\x43\x01\x02\x03\x0f\x00\x0a\x00\x00\x00\x00\x00\x00\x00\x00\x01\x01\x2a\x48\x2c";
+    const CANISTER_SIG_CBOR: &[u8; 265] = b"\xd9\xd9\xf7\xa2\x6b\x63\x65\x72\x74\x69\x66\x69\x63\x61\x74\x65\x58\xa1\xd9\xd9\xf7\xa2\x64\x74\x72\x65\x65\x83\x01\x83\x02\x48\x63\x61\x6e\x69\x73\x74\x65\x72\x83\x02\x4a\x00\x00\x00\x00\x00\x00\x00\x01\x01\x01\x83\x02\x4e\x63\x65\x72\x74\x69\x66\x69\x65\x64\x5f\x64\x61\x74\x61\x82\x03\x58\x20\xa9\xea\x05\x9d\xf2\x7a\x09\x7e\xc4\x38\xdb\x35\x62\xb9\x55\xc3\xd3\xfa\x08\xeb\x17\xc1\x3c\xda\x63\x90\x42\xfa\xe0\xcf\x60\x36\x83\x02\x44\x74\x69\x6d\x65\x82\x03\x43\x87\xad\x4b\x69\x73\x69\x67\x6e\x61\x74\x75\x72\x65\x58\x30\xa4\xd5\xfd\x47\xa0\x88\x13\x5b\xed\x52\x22\x0c\xca\xa4\x76\xfb\x6c\x88\x95\xdd\xa3\x1e\x2a\x86\xa7\xa2\x97\xdc\x7a\x30\x81\x27\x1e\xf1\x1a\xee\xb5\xd2\xbb\x25\x83\x0d\xcb\xdd\x82\xad\x7a\x52\x64\x74\x72\x65\x65\x83\x02\x43\x73\x69\x67\x83\x02\x58\x20\x00\x42\xcd\x04\x7a\xad\x32\x06\x37\xce\xae\xe2\x1d\x48\x9e\xf4\xe5\x14\xce\x20\x1f\x19\x60\x68\x30\xa2\xaf\x7b\x7d\x9c\x86\x7d\x83\x02\x58\x20\x14\x9b\x80\x95\x11\x98\x27\xcf\xea\x0a\xa6\x6e\x7b\x7f\x80\xe9\x13\xca\xef\xa3\x1a\x60\x6d\xe4\x02\x69\xc3\xd8\x6c\xfe\xa5\x8d\x82\x03\x40";
 
     #[test]
     fn should_der_encode_canister_sig_pk() {
@@ -301,5 +315,34 @@ mod tests {
     fn should_fail_extract_raw_root_pk_from_short_der() {
         let result = extract_raw_root_pk_from_der(&IC_ROOT_PK_DER[..42]);
         assert_matches!(result, Err(e) if e.contains("invalid root pk length"));
+    }
+
+    #[test]
+    fn should_parse_canister_sig_cbor() {
+        let result = parse_canister_sig_cbor(CANISTER_SIG_CBOR);
+        assert_matches!(result, Ok(_));
+    }
+
+    #[test]
+    fn should_fail_parse_canister_sig_cbor_if_bad_prefix() {
+        let mut bad_prefix_cbor = *CANISTER_SIG_CBOR;
+        bad_prefix_cbor[0] = 42;
+        let result = parse_canister_sig_cbor(&bad_prefix_cbor);
+        assert_matches!(result, Err(e) if e.contains("doesn't have a self-describing tag"));
+    }
+
+    #[test]
+    fn should_fail_parse_canister_sig_cbor_if_incomplete_cbor() {
+        let result = parse_canister_sig_cbor(&CANISTER_SIG_CBOR[..100]);
+        assert_matches!(result, Err(e) if e.contains("failed to parse canister signature"));
+    }
+
+    #[test]
+    fn should_fail_parse_canister_sig_cbor_if_corrupted_cbor() {
+        let mut corrupted_cbor = *CANISTER_SIG_CBOR;
+        // `HashTree` starts around this byte.
+        corrupted_cbor[180] = 42;
+        let result = parse_canister_sig_cbor(&corrupted_cbor);
+        assert_matches!(result, Err(e) if e.contains("failed to parse canister signature"));
     }
 }
