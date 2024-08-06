@@ -18,7 +18,7 @@ Creating a signature is a two-step process:
 In order to bridge the two steps, the canister has to keep state about the prepared signatures:
 
 ```rust
-use canister_sig_util::signature_map::SignatureMap;
+use ic_canister_sig_creation::signature_map::SignatureMap;
 
 thread_local! {
     /// Prepared canister signatures, no need to keep them in stable memory as they are only kept for one minute
@@ -32,7 +32,7 @@ thread_local! {
 To prepare a signature on a message, add it's `hash` to the signature map together with the `seed` used to generate the public key:
 
 ```rust
-use canister_sig_util::hash_bytes;
+use ic_canister_sig_creation::hash_bytes;
 
 /// The signature domain should be unique for the context in which the signature is used.
 const SIG_DOMAIN: &[u8] = b"ic-example-canister-sig";
@@ -52,7 +52,7 @@ fn add_signature(seed: &[u8], message: &[u8]) {
 Then update the `certified_data` to the new root hash of the signature map:
 
 ```rust
-use canister_sig_util::signature_map::LABEL_SIG;
+use ic_canister_sig_creation::signature_map::LABEL_SIG;
 use ic_cdk::api::set_certified_data;
 
 fn update_root_hash() {
