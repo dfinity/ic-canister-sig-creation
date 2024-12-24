@@ -17,7 +17,7 @@ readme = "README.md"
 # ic dependencies
 candid = "0.10"
 ic-cdk = "0.15"
-ic-certification = "2.5"
+ic-certification = "3.0"
 ic-representation-independent-hash = "2.5"
 
 # other dependencies
