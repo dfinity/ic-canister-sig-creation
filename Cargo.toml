@@ -31,4 +31,4 @@ thiserror = "2"
 
 [dev-dependencies]
 assert_matches = "1.5"
-rand = { version ="0.8" }
+rand = { version ="0.9" }
