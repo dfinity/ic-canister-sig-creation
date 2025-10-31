@@ -75,18 +75,18 @@ fn test_random_modifications() {
     use rand::prelude::*;
 
     let mut map = SignatureMap::default();
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let window_size = 5;
 
     let mut pairs = Vec::new();
 
     for round in 1..100 {
-        let n_seeds = rng.gen_range(0..5);
+        let n_seeds = rng.random_range(0..5);
         for _i in 0..n_seeds {
             let mut seed = Hash::default();
             rng.fill_bytes(&mut seed);
 
-            let n_messages = rng.gen_range(0..5);
+            let n_messages = rng.random_range(0..5);
             for _k in 0..n_messages {
                 let mut message_hash = Hash::default();
                 rng.fill_bytes(&mut message_hash);
