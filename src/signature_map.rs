@@ -1,6 +1,6 @@
 //! Maintains signatures with associated expirations.
 use crate::{hash_bytes, hash_with_domain, CanisterSig};
-use ic_cdk::api::{data_certificate, time};
+use ic0::time;
 use ic_certification::{
     fork, labeled, leaf, leaf_hash, pruned, AsHashTree, Hash, HashTree, RbTree,
 };
@@ -228,6 +228,17 @@ impl SignatureMap {
             .nested_witness(&seed_hash[..], |nested| nested.witness(&message_hash[..]));
         Some(witness)
     }
+}
+
+// copied from ic_cdk::api::data_certificate to avoid dependency on ic_cdk
+fn data_certificate() -> Option<Vec<u8>> {
+    if ic0::data_certificate_present() == 0 {
+        return None;
+    }
+    let n = ic0::data_certificate_size();
+    let mut buf = vec![0u8; n];
+    ic0::data_certificate_copy(&mut buf, 0);
+    Some(buf)
 }
 
 #[cfg(test)]

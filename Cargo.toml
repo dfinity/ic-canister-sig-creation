@@ -16,7 +16,7 @@ readme = "README.md"
 [dependencies]
 # ic dependencies
 candid = "0.10"
-ic-cdk = "0.18.3"
+ic0 = "1.0.1"
 ic-certification = "3.0"
 ic-representation-independent-hash = "3.0"
 
@@ -31,4 +31,4 @@ thiserror = "2"
 
 [dev-dependencies]
 assert_matches = "1.5"
-rand = { version ="0.9" }
+rand = { version = "0.9" }
