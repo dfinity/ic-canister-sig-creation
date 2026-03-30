@@ -26,7 +26,7 @@ lazy_static = "1.4"
 serde = { version = "1", features = ["derive"] }
 serde_bytes = "0.11"
 serde_cbor = "0.11"
-sha2 = "0.10"
+sha2 = "0.11"
 thiserror = "2"
 
 [dev-dependencies]
